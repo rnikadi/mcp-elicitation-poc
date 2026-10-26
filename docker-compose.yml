@@ -1,0 +1,18 @@
+services:
+  server:
+    build: .
+    image: mcp-elicitation-poc
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3000"
+      # The payment link is opened in your browser on the host, not inside Docker.
+      PUBLIC_URL: http://localhost:3000
+      # Host headers accepted on /mcp: your machine, plus the client container.
+      ALLOWED_HOSTS: localhost,127.0.0.1,server
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/healthz"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
