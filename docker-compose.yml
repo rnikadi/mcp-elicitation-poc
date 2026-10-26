@@ -16,3 +16,20 @@ services:
       interval: 2s
       timeout: 2s
       retries: 15
+
+  # Interactive, so it is not started by `docker compose up`.
+  # Run it with: docker compose run --rm client
+  client:
+    build: .
+    image: mcp-elicitation-poc
+    command: ["node", "dist/client/main.js"]
+    environment:
+      MCP_URL: http://server:3000/mcp
+      # Set to 1 to print every JSON-RPC round (also toggleable from the menu).
+      SHOW_PROTOCOL: ${SHOW_PROTOCOL:-0}
+    stdin_open: true
+    tty: true
+    depends_on:
+      server:
+        condition: service_healthy
+    profiles: ["client"]
