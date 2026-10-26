@@ -8,14 +8,34 @@ on the **2026-07-28** spec. It covers both modes, plus all three ways a user can
 | **Form** | `plan_trip` | Dates, nights, travelers, cabin, extras, email | Ordinary details the client may see, collected from a flat JSON Schema |
 | **URL** | `checkout` | Card payment on a hosted page | Card data must **never** pass through the MCP client |
 
-![Terminal demo](docs/demo.gif)
+There are two clients for the same server: a **web app** (browser UI plus a TypeScript backend) and a
+**terminal client**.
+
+![Web app](docs/web-app.png)
 
 ## Run it
 
 You need Docker. Everything runs from Docker Compose.
 
 ```sh
-docker compose up --build -d      # MCP server + payment page on http://localhost:3000
+docker compose up --build -d      # MCP server, payment page, and the web app
+```
+
+Then open **http://localhost:8080**. Plan a trip, fill in the form the server asks for, then check out and pay
+on the page that opens in a new tab. Every elicitation opens as a dialog with **Decline** and **Cancel** next to
+the main button (Esc also cancels), the right-hand panel shows each JSON-RPC round, and the demo checklist ticks
+off all six accept/decline/cancel paths as you go.
+
+| Service | What it is | Port |
+| --- | --- | --- |
+| `server` | Trip planner MCP server (`/mcp`) and the payment page (`/pay/...`) | `localhost:3000` |
+| `web-backend` | Web app backend: the **MCP client**. Runs tool calls and relays elicitations to the browser over SSE | internal `3001` |
+| `web` | Web app frontend: TypeScript UI built with Vite, served by nginx, which proxies `/api` to the backend | `localhost:8080` |
+| `client` | Interactive terminal client (profile `client`, not started by `up`) | n/a |
+
+### Terminal client
+
+```sh
 docker compose run --rm client    # interactive terminal client
 ```
 
@@ -26,7 +46,26 @@ in the menu, or start the client with `SHOW_PROTOCOL=1 docker compose run --rm c
 Stop everything with `docker compose down`.
 
 **Without Docker** (Node 22+): `npm install`, then `npm run dev:server` in one terminal and `npm run dev:client`
-in another.
+in another. For the web app, run `npm run dev:server`, `npm run dev:web-backend` and `npm run dev:web` (three
+terminals), then open http://localhost:5173.
+
+### How the web app is wired
+
+```text
+browser (localhost:8080)          web-backend (MCP client)              server (MCP server)
+  │ POST /api/runs plan_trip ───────▶│ tools/call plan_trip ──────────────▶│
+  │                                  │◀── input_required (form) ───────────│
+  │◀── SSE: prompt {form, schema} ───│                                     │
+  │ renders form, user reviews       │                                     │
+  │ POST /api/runs/:id/prompts/:p ──▶│ tools/call + inputResponses ───────▶│
+  │◀── SSE: done {quote} ────────────│◀── result ──────────────────────────│
+```
+
+The backend reuses the terminal client's MRTR loop (`runTool` in `src/client/flow.ts`) with a different `Ui`:
+each question becomes an SSE event, and the browser's POST answers it. The browser reuses the same schema and
+URL-review helpers. For URL mode the browser opens the payment page itself; neither the frontend nor the backend
+fetches it. If the page is closed while a dialog is open, the backend answers `cancel` after 5 seconds, since
+the user dismissed it without choosing.
 
 For presenting, see the [5-minute run sheet](docs/run-sheet.md). If the live demo fails, there's a recording
 in [`docs/demo.mp4`](docs/demo.mp4) (or `asciinema play docs/demo.cast`).
@@ -86,6 +125,9 @@ never from the client.
 | [`src/client/flow.ts`](src/client/flow.ts) | The client side of the MRTR loop: answer `inputRequests`, retry with `inputResponses` and the exact `requestState` |
 | [`src/client/terminalUi.ts`](src/client/terminalUi.ts) | Required client UX: which server is asking, review before sending, decline and cancel everywhere, URL consent |
 | [`src/client/url.ts`](src/client/url.ts) | URL review: full link, highlighted host, warnings for non-HTTPS, Punycode, odd schemes |
+| [`src/web/backend/runs.ts`](src/web/backend/runs.ts) | Web backend: a `Ui` that turns each elicitation into an event and waits for the browser's answer; closing the page counts as cancel |
+| [`src/web/backend/app.ts`](src/web/backend/app.ts) | Web backend HTTP API: start a run, stream its events (SSE), answer a prompt |
+| [`src/web/frontend/main.ts`](src/web/frontend/main.ts) | Browser UI: renders form-mode schemas as forms with a review step, URL consent dialog, Esc as cancel, protocol panel |
 
 Built with the TypeScript SDK v2 (`@modelcontextprotocol/server` and `@modelcontextprotocol/client` 2.4.0).
 
@@ -112,11 +154,13 @@ What a production server must add:
 
 ```sh
 npm install
-npm test           # 24 tests: server, client flow and helpers, over real HTTP
+npm test           # 35 tests: server, terminal client flow, web backend, over real HTTP
 npm run typecheck
 npm run smoke      # end-to-end check against a running server (used in CI)
+npm run smoke:web  # end-to-end check through the web app on :8080 (used in CI)
 ```
 
-CI (GitHub Actions) runs typecheck, tests and build, then brings the stack up with Docker Compose and runs the smoke test.
+CI (GitHub Actions) runs typecheck, tests and build, then brings the stack up with Docker Compose and runs both
+smoke tests.
 
 To re-record the demo: start the server, then run `python3 scripts/record-demo.py`. This writes `docs/demo.cast`.

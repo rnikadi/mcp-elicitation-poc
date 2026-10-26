@@ -7,12 +7,48 @@ services:
       PORT: "3000"
       # The payment link is opened in your browser on the host, not inside Docker.
       PUBLIC_URL: http://localhost:3000
-      # Host headers accepted on /mcp: your machine, plus the client container.
+      # Host headers accepted on /mcp: your machine, plus the client containers.
       ALLOWED_HOSTS: localhost,127.0.0.1,server
     ports:
       - "127.0.0.1:3000:3000"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/healthz"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+  # Web app backend: the MCP client. It runs the tool calls against the server
+  # and relays each elicitation to the browser over Server-Sent Events.
+  web-backend:
+    build: .
+    image: mcp-elicitation-poc
+    command: ["node", "dist/web/backend/main.js"]
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3001"
+      MCP_URL: http://server:3000/mcp
+    depends_on:
+      server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/healthz"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+  # Web app frontend: the browser UI on http://localhost:8080 (nginx, proxies /api).
+  web:
+    build:
+      context: .
+      target: web
+    image: mcp-elicitation-poc-web
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      web-backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/"]
       interval: 2s
       timeout: 2s
       retries: 15

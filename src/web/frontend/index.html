@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Trip Planner · MCP elicitation</title>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>" />
+        <link rel="stylesheet" href="./style.css" />
+    </head>
+    <body>
+        <header class="topbar">
+            <div class="brand">
+                <span class="logo" aria-hidden="true">✈</span>
+                <div>
+                    <h1>Trip Planner</h1>
+                    <p class="sub">MCP elicitation demo · form mode and URL mode</p>
+                </div>
+            </div>
+            <div id="status" class="status" role="status">Connecting…</div>
+        </header>
+
+        <main class="layout">
+            <section class="col actions" aria-label="Tools">
+                <form id="plan-form" class="card tool">
+                    <div class="tool-head">
+                        <span class="badge form">form mode</span>
+                        <h2>1. Plan a trip</h2>
+                    </div>
+                    <p class="muted">
+                        Calls <code>plan_trip</code>. The server answers with <code>input_required</code> and a flat JSON
+                        Schema; this app renders it as a form.
+                    </p>
+                    <label class="field">
+                        <span>Destination</span>
+                        <input id="destination" name="destination" value="Lisbon" required />
+                    </label>
+                    <button type="submit" class="primary">Plan trip</button>
+                </form>
+
+                <form id="checkout-form" class="card tool">
+                    <div class="tool-head">
+                        <span class="badge url">URL mode</span>
+                        <h2>2. Check out</h2>
+                    </div>
+                    <p class="muted">
+                        Calls <code>checkout</code>. Card details must never pass through the client, so the server sends
+                        you to its own payment page.
+                    </p>
+                    <label class="field">
+                        <span>Quote id</span>
+                        <input id="quote-id" name="quoteId" placeholder="Plan a trip first" required />
+                    </label>
+                    <button type="submit" class="primary">Check out</button>
+                </form>
+
+                <div class="card">
+                    <h2>Demo checklist</h2>
+                    <p class="muted small">Every way a user can answer, in both modes. Press Esc in a prompt to cancel.</p>
+                    <table class="checklist" id="checklist">
+                        <thead>
+                            <tr><th></th><th>Form</th><th>URL</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><th>accept</th><td data-k="form:accept">○</td><td data-k="url:accept">○</td></tr>
+                            <tr><th>decline</th><td data-k="form:decline">○</td><td data-k="url:decline">○</td></tr>
+                            <tr><th>cancel</th><td data-k="form:cancel">○</td><td data-k="url:cancel">○</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="col" aria-label="Activity">
+                <div class="col-head">
+                    <h2>Activity</h2>
+                    <button id="clear" class="ghost small" type="button">Clear</button>
+                </div>
+                <ol id="timeline" class="timeline">
+                    <li class="empty muted">Run a tool to start. Each elicitation opens as a dialog from the server.</li>
+                </ol>
+            </section>
+
+            <section class="col protocol" aria-label="Protocol">
+                <div class="col-head">
+                    <h2>Protocol</h2>
+                    <label class="toggle small"><input id="show-wire" type="checkbox" checked /> Show JSON-RPC</label>
+                </div>
+                <p class="muted small">What the backend (the MCP client) and the server send each round.</p>
+                <ol id="wire" class="wire"></ol>
+            </section>
+        </main>
+
+        <dialog id="prompt" aria-labelledby="prompt-title"></dialog>
+
+        <script type="module" src="./main.ts"></script>
+    </body>
+</html>
