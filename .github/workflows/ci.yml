@@ -32,6 +32,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Validate the Compose file, including the client profile
+        run: docker compose --profile client config --quiet
       - name: Start the demo with Docker Compose
         run: docker compose up --build --detach --wait
       - name: Smoke test against the running stack
