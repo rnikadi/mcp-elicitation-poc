@@ -4,3 +4,4 @@ dist
 .github
 test
 *.log
+dist-web

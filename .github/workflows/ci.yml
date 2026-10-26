@@ -38,6 +38,8 @@ jobs:
         run: docker compose up --build --detach --wait
       - name: Smoke test against the running stack
         run: npm run smoke
+      - name: Smoke test the web app (frontend on :8080 → web backend → server)
+        run: npm run smoke:web
       - name: Show logs on failure
         if: failure()
         run: docker compose logs

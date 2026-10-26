@@ -3,5 +3,7 @@
   "compilerOptions": {
     "rootDir": "src"
   },
-  "include": ["src"]
+  "include": ["src"],
+  // The browser code is bundled by Vite into dist-web instead.
+  "exclude": ["src/web/frontend"]
 }
